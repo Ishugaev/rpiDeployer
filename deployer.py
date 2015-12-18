@@ -16,9 +16,12 @@ GPIO.setup(red_led, GPIO.OUT)
 GPIO.setup(button, GPIO.IN, GPIO.PUD_UP)
 
 GPIO.output(green_led, 1)
+GPIO.output(red_led, 1)
 time.sleep(random.uniform(5, 10))
 GPIO.output(green_led, 0)
 GPIO.output(red_led, 0)
+
+id = 0
 
 
 def build(key):
@@ -29,20 +32,40 @@ def build(key):
         headers = {'accept': 'application/json', 'Content-Type': 'application/json'},
         data='{}'
     ).json()
-    return myResponse['link']['href']
+    return myResponse['buildNumber']
 
-def checkState(url):
-    print(url)
-    myResponse = requests.get(
-        url,
-        auth = HTTPBasicAuth('dmyroshnychenko', 'dmyroshnychenko_jira'),
-        headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
-    ).json()
-
-    for key in myResponse:
-        print(key + " : " + str(myResponse[key]))
+def checkState(key):
+    global id
     
-    if myResponse['buildState'] == 'Successful':
+    if id:
+        url = 'https://drukwerkdeal.atlassian.net/builds/rest/api/latest/result/' + key + '-' + str(id)
+        print(url)
+        latest = requests.get(
+            url,
+            auth = HTTPBasicAuth('dmyroshnychenko', 'dmyroshnychenko_jira'),
+            headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
+        ).json()
+        buildUrl = ''
+    else:
+        url = 'https://drukwerkdeal.atlassian.net/builds/rest/api/latest/result/' + key
+        print(url)
+        myResponse = requests.get(
+            url,
+            auth = HTTPBasicAuth('dmyroshnychenko', 'dmyroshnychenko_jira'),
+            headers = {'accept': 'application/json', 'Content-Type': 'application/json'}
+        ).json()
+
+        latest = myResponse['results']['result'][0]
+
+    #for key in latest:
+    #    print(key + " : " + str(latest[key]))
+    print(latest['buildState'])
+    print(latest['buildNumber'])
+
+    if latest['lifeCycleState'] == 'Finished':
+        id = 0
+    
+    if latest['buildState'] == 'Successful':
         GPIO.output(green_led, 1)
         GPIO.output(red_led, 0)
     else:
@@ -50,21 +73,21 @@ def checkState(url):
         GPIO.output(red_led, 1)
 
 while True:
+    checkState('SS-SB')
+    time.sleep(5)
     if GPIO.input(button) == False:
         GPIO.output(green_led, 1)
-        
+        GPIO.output(red_led, 1)
+        t1 = time.clock()
         while GPIO.input(button) == False:
             pass
-
-        key = build('SS-SB')
-        while True:
-            time.sleep(5)
-            checkState(key)
-            while GPIO.input(button) == False:
-                pass
+        t2 = time.clock()
+        GPIO.output(green_led, 0)
+        GPIO.output(red_led, 0)
+        if t2-t1 > 3:
             break
-        
-        break
+
+        id = build('SS-SB')
 
 GPIO.cleanup()
 
