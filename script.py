@@ -1,5 +1,6 @@
 import requests
 from requests.auth import HTTPBasicAuth
+from ConfigParser import SafeConfigParser
 import json
 
 # Replace with the correct URL
@@ -7,9 +8,12 @@ url = "https://drukwerkdeal.atlassian.net/builds/rest/api/latest/info"
 
 # It is a good practice not to hardcode the credentials. So ask the user to enter credentials at runtime
 
+parser = SafeConfigParser()
+parser.read('config.ini')
+
 myResponse = requests.get(
     url,
-    auth = HTTPBasicAuth('dmyroshnychenko', 'dmyroshnychenko_jira'),
+    auth = HTTPBasicAuth(parser.get('bamboo', 'username'), parser.get('bamboo', 'password')),
     headers = {'accept': 'application/json'}
 )
 #print (myResponse.status_code)
